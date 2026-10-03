@@ -1,108 +1,396 @@
-import time
+
+import tkinter as tk
+from tkinter import messagebox
+import io
+
+from PIL import Image, ImageTk
+
 import pyautogui
 from pynput import mouse
 
+import time
+import threading
 
-# activity records
-events =  []
+import cairosvg
 
-# recording status
+def load_svg(svg_path,width,height) :
+    png_data = cairosvg.svg2png(
+        url=svg_path,
+        output_width=width,
+        output_height=height
+    )
+    
+    image = Image.open(io.BytesIO(png_data))
+    
+    return ImageTk.PhotoImage(image=image)
+
+instagram_icon = load_svg("./assets/instagram.svg",30,30)
+
+# ==========================================
+# DATA
+# ==========================================
+
+events = []
+
 recording = False
-
-
-# last time activity
 last_time = None
 
-def on_move(x,y) :
+mouse_listener = None
+
+
+# ==========================================
+# UPDATE STATUS
+# ==========================================
+
+def update_status(text):
+    status_label.config(text=f"Status: {text}")
+
+
+# ==========================================
+# MOUSE MOVE
+# ==========================================
+
+def on_move(x, y):
     global last_time
-    if not recording :
+
+    if not recording:
         return
-    
-    current_time = time.time();
-    
+
+    current_time = time.time()
+
     delay = current_time - last_time
-    
+
     events.append({
-        "type" : "move",
-        "x" : x,
-        "y" : y,
-        "delay" : delay
+        "type": "move",
+        "x": x,
+        "y": y,
+        "delay": delay
     })
-    
+
     last_time = current_time
-    
-def on_click(x,y,button,pressed) :
+
+    update_event_count()
+
+
+# ==========================================
+# MOUSE CLICK
+# ==========================================
+
+def on_click(x, y, button, pressed):
     global last_time
-    
-    if not recording :
+
+    if not recording:
         return
-    
-    if pressed :
+
+    if pressed:
+
         current_time = time.time()
-        
+
         delay = current_time - last_time
-        
+
         events.append({
-            "type" : "click",
-            "x" : x,
-            "y" : y,
-            "button" : str(button),
-            "delay" : delay
+            "type": "click",
+            "x": x,
+            "y": y,
+            "button": str(button),
+            "delay": delay
         })
-        
+
         last_time = current_time
-        
-listener = mouse.Listener(
-    on_move=on_move,
-    on_click=on_click
+
+        update_event_count()
+
+
+# ==========================================
+# UPDATE JUMLAH EVENT
+# ==========================================
+
+def update_event_count():
+
+    event_count_label.config(
+        text=f"Events: {len(events)}"
+    )
+
+
+# ==========================================
+# START RECORDING
+# ==========================================
+
+def start_recording():
+
+    global recording
+    global last_time
+    global mouse_listener
+
+    if recording:
+        return
+
+    # Hapus rekaman sebelumnya
+    events.clear()
+
+    update_event_count()
+
+    recording = True
+
+    last_time = time.time()
+
+    update_status("🔴 RECORDING")
+
+    # Membuat listener mouse
+    mouse_listener = mouse.Listener(
+        on_move=on_move,
+        on_click=on_click
+    )
+
+    mouse_listener.start()
+
+
+# ==========================================
+# STOP RECORDING
+# ==========================================
+
+def stop_recording():
+
+    global recording
+    global mouse_listener
+
+    if not recording:
+        return
+
+    recording = False
+
+    if mouse_listener:
+        mouse_listener.stop()
+        mouse_listener = None
+
+    update_status("READY")
+
+    messagebox.showinfo(
+        "Recording selesai",
+        f"Berhasil merekam {len(events)} event."
+    )
+
+
+# ==========================================
+# PLAYBACK
+# ==========================================
+
+def playback():
+
+    if recording:
+        messagebox.showwarning(
+            "Warning",
+            "Hentikan recording terlebih dahulu."
+        )
+
+        return
+
+    if not events:
+        messagebox.showwarning(
+            "Warning",
+            "Belum ada rekaman."
+        )
+
+        return
+
+    update_status("▶ PLAYING")
+
+    # Playback dijalankan di thread
+    thread = threading.Thread(
+        target=run_playback
+    )
+
+    thread.start()
+
+
+# ==========================================
+# MENJALANKAN REKAMAN
+# ==========================================
+
+def run_playback():
+
+    for event in events:
+
+        # Tunggu sesuai delay asli
+        time.sleep(event["delay"])
+
+        # --------------------------
+        # MOUSE MOVE
+        # --------------------------
+
+        if event["type"] == "move":
+
+            pyautogui.moveTo(
+                event["x"],
+                event["y"]
+            )
+
+        # --------------------------
+        # MOUSE CLICK
+        # --------------------------
+
+        elif event["type"] == "click":
+
+            pyautogui.click(
+                event["x"],
+                event["y"]
+            )
+
+    update_status("READY")
+
+
+# ==========================================
+# GUI
+# ==========================================
+
+messagebox.showinfo(
+    "Info",
+    "Welcome to Zet Macro Recorder v1.0.0\n\n"
+    "This software is designed to record and playback mouse events.\n"
+    "Please use it responsibly and avoid using it for any malicious purposes."
 )
 
-listener.start()
+root = tk.Tk()
+
+root.title("Zet Macro Recorder v1.0.0")
+
+root.geometry("600x395")
+
+root.resizable(False, False)
 
 
-print("<======= Zet Macro Recorder =======>")
-print("Press 'r' to start recording")
-print("Press 's' to stop recording")
-print("Press 'p' to play recording master")
+# ==========================================
+# TITLE
+# ==========================================
 
-while True :
-    command = input("Enter command : ").lower()
-    
-    if command == "r" :
-        events.clear()
-        
-        for i in range(3,0,-1) :
-            print(i)
-            time.sleep(1)
-        
-        recording = True
-        last_time = time.time()
-        
-        print("🔴 Recording....")
-        
-    elif command == "s" :
-        recording = False
-        print("🟢 Recording stopped")
-        print("Recorded evennts : ", len(events))
-        
-    elif command == "p" :
-        for event in events :
-            time.sleep(event["delay"])
-            
-            if event["type"] == "move" :
-                pyautogui.moveTo(event["x"], event["y"])
-                
-            elif event["type"] == "click" : 
-                pyautogui.click(
-                    event["x"],
-                    event["y"],
-                )
-                
-        print("✅ Playback completed")
-        pyautogui.screenshot("success.png")
-            
-    elif command == "q" :
-        print("Exiting...")
-        listener.stop()
-        recording = False
-        break
+title_label = tk.Label(
+    root,
+    text="Zet Macro Recorder",
+    font=("Arial", 20, "bold")
+)
+
+title_label.pack(pady=20)
+
+
+# ==========================================
+# STATUS
+# ==========================================
+
+status_label = tk.Label(
+    root,
+    text="Status: READY",
+    font=("Arial", 12)
+)
+
+status_label.pack()
+
+
+# ==========================================
+# EVENT COUNT
+# ==========================================
+
+event_count_label = tk.Label(
+    root,
+    text="Events: 0",
+    font=("Arial", 11)
+)
+
+event_count_label.pack(pady=10)
+
+
+# ==========================================
+# BUTTON FRAME
+# ==========================================
+
+button_frame = tk.Frame(root)
+
+button_frame.pack(pady=20)
+
+
+# ==========================================
+# RECORD BUTTON
+# ==========================================
+
+record_button = tk.Button(
+    button_frame,
+    text="🔴 RECORD",
+    width=12,
+    command=start_recording
+)
+
+record_button.grid(
+    row=0,
+    column=0,
+    padx=5
+)
+
+
+# ==========================================
+# STOP BUTTON
+# ==========================================
+
+stop_button = tk.Button(
+    button_frame,
+    text="⏹ STOP",
+    width=12,
+    command=stop_recording
+)
+
+stop_button.grid(
+    row=0,
+    column=1,
+    padx=5
+)
+
+
+# ==========================================
+# PLAY BUTTON
+# ==========================================
+
+play_button = tk.Button(
+    button_frame,
+    text="▶ PLAY",
+    width=12,
+    command=playback
+)
+
+play_button.grid(
+    row=1,
+    column=0,
+    columnspan=2,
+    pady=10
+)
+
+# exit button
+exit_button = tk.Button(
+    button_frame,
+    text="❌ EXIT",
+    width=12,
+    command=root.destroy
+)
+
+# exit_button.pack(pady=10)
+
+exit_button.grid(
+    row=2,
+    column=0,
+    columnspan=2,
+    pady=10
+)
+
+# instagram button
+
+instagram_button = tk.Button(
+    button_frame,
+    image=instagram_icon,
+    width=30,
+    height=30,
+    command=lambda:print("Instagram button clicked")
+)
+
+
+# ==========================================
+# MENJALANKAN GUI
+# ==========================================
+
+root.mainloop()
