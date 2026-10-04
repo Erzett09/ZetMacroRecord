@@ -1,8 +1,8 @@
 
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, ttk
 import io
-
+import webbrowser
 from PIL import Image, ImageTk
 
 import pyautogui
@@ -11,20 +11,15 @@ from pynput import mouse
 import time
 import threading
 
-import cairosvg
+instagram_logo = Image.open("assets/instagram.png")
+github_logo = Image.open("assets/github.png")
 
-def load_svg(svg_path,width,height) :
-    png_data = cairosvg.svg2png(
-        url=svg_path,
-        output_width=width,
-        output_height=height
-    )
-    
-    image = Image.open(io.BytesIO(png_data))
-    
-    return ImageTk.PhotoImage(image=image)
 
-instagram_icon = load_svg("./assets/instagram.svg",30,30)
+# ==========================================
+#  <===            AUTHOR              ===>
+# ==========================================
+
+print("Author : r-code09\nInstagram : @rzneedporsche\nGithub : erzett09")
 
 # ==========================================
 # DATA
@@ -210,6 +205,8 @@ def playback():
 def run_playback():
 
     for event in events:
+        
+        print(event)
 
         # Tunggu sesuai delay asli
         time.sleep(event["delay"])
@@ -254,9 +251,12 @@ root = tk.Tk()
 
 root.title("Zet Macro Recorder v1.0.0")
 
-root.geometry("600x395")
+root.geometry("600x495")
 
 root.resizable(False, False)
+
+instagram_icon = ImageTk.PhotoImage(instagram_logo)
+github_icon = ImageTk.PhotoImage(github_logo)
 
 
 # ==========================================
@@ -308,6 +308,28 @@ button_frame.pack(pady=20)
 
 
 # ==========================================
+# |     DROPDOWN SAVED RECORDINGS          |
+# ==========================================
+
+
+dropdown_saved_records = ttk.Combobox(
+    button_frame,
+    values=[
+        "example_recording_1",
+        "example_recording_2",
+    ],
+    state="readonly"
+) 
+
+dropdown_saved_records.grid(
+    row=4,
+    column=0,
+    columnspan=2,
+    pady=10,
+)
+
+
+# ==========================================
 # RECORD BUTTON
 # ==========================================
 
@@ -354,10 +376,28 @@ play_button = tk.Button(
     command=playback
 )
 
+play_button.config(
+    state="normal"
+)
+
 play_button.grid(
     row=1,
     column=0,
-    columnspan=2,
+    columnspan=1,
+    pady=10
+)
+
+saved_button = tk.Button(
+    button_frame,
+    text="💾 Saved",
+    width=12,
+    command=lambda:print("simpan")
+)
+
+saved_button.grid(
+    row=1,
+    column=1,
+    columnspan=1,
     pady=10
 )
 
@@ -365,7 +405,7 @@ play_button.grid(
 exit_button = tk.Button(
     button_frame,
     text="❌ EXIT",
-    width=12,
+    width=22,
     command=root.destroy
 )
 
@@ -381,12 +421,37 @@ exit_button.grid(
 # instagram button
 
 instagram_button = tk.Button(
-    button_frame,
+    root,
     image=instagram_icon,
     width=30,
     height=30,
-    command=lambda:print("Instagram button clicked")
+    command=lambda:webbrowser.open("https://www.instagram.com/rzneedporsche?stkn=MXgxNDVsYnozOGttaA==")
 )
+
+instagram_button.place(
+    relx=1.0,
+    rely=1.0,
+    anchor="se",
+    x=-20,
+    y=-20
+)
+
+github_button = tk.Button(
+    root,
+    image=github_icon,
+    width=30,
+    height=30,
+    command=lambda:webbrowser.open("https://www.github.com/erzett09")
+)
+
+github_button.place(
+    relx=1.0,
+    rely=1.0,
+    anchor="se",
+    x=-60,
+    y=-20
+)
+
 
 
 # ==========================================
