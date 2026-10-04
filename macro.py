@@ -1,6 +1,6 @@
 
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, simpledialog
 import io
 import webbrowser
 from PIL import Image, ImageTk
@@ -13,6 +13,8 @@ import threading
 
 instagram_logo = Image.open("assets/instagram.png")
 github_logo = Image.open("assets/github.png")
+
+saved_records = []
 
 
 # ==========================================
@@ -196,6 +198,46 @@ def playback():
     )
 
     thread.start()
+    
+    
+# ==========================================
+#  MENYIMPAN DATA RECORDING
+# ==========================================
+def save_recording() :
+    if not events:
+        messagebox.showwarning(
+            "Warning",
+            "Belum ada rekaman."
+            "Mohon lakukan recording terlebih dahulu."
+        )
+        return
+    
+    name = simpledialog.askstring(
+        "Save Recording",
+        "Masukkan nama file untuk menyimpan rekaman:"
+    )
+    
+    if not name :
+        return
+    
+    print("Saving recording as:", name)
+    saved_records.append(
+        {
+            "file_name" : name,
+            "events" : events.copy()
+        }
+    )
+    
+    dropdown_saved_records.config(
+        values=[record["file_name"] for record in saved_records]
+    )
+    print("Saved recordings:", saved_records[-1]["file_name"])
+    messagebox.showinfo(
+        "Recording Saved",
+        f"Rekaman berhasil disimpan sebagai '{name}'."
+    )
+    
+
 
 
 # ==========================================
@@ -312,14 +354,31 @@ button_frame.pack(pady=20)
 # ==========================================
 
 
+def selected_recording(event) :
+    selected_record = dropdown_saved_records.get()
+    
+    global events
+    
+    for record in saved_records :
+        if record["file_name"] == selected_record :
+            events = record["events"].copy()
+            update_event_count()
+    
+    print("Selected recording:", selected_record)
+
 dropdown_saved_records = ttk.Combobox(
     button_frame,
     values=[
-        "example_recording_1",
-        "example_recording_2",
-    ],
-    state="readonly"
+        record["file_name"] for record in saved_records],
+    state="readonly",
 ) 
+
+dropdown_saved_records.bind(
+    "<<ComboboxSelected>>",
+    selected_recording
+)
+
+
 
 dropdown_saved_records.grid(
     row=4,
@@ -391,7 +450,7 @@ saved_button = tk.Button(
     button_frame,
     text="💾 Saved",
     width=12,
-    command=lambda:print("simpan")
+    command=save_recording
 )
 
 saved_button.grid(
